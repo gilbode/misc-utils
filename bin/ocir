@@ -1,20 +1,13 @@
-#!/home/oci/lib/oracle-cli/bin/python
+#!/usr/bin/env python
 
 import oci.auth.signers
 import oci.identity
+import json
+import logging
+import os
 import requests
 from oci import Signer
 
-import json
-
-def __dump_json(to_print):
-    return json.dumps(to_print, sort_keys=True, indent=4, separators=(',', ': '))
-
-def __print_json(to_print):
-    print(__dump_json(to_print))
-
-import requests
-import logging
 
 # These two lines enable debugging at httplib level (requests->urllib3->http.client)
 # You will see the REQUEST, including HEADERS and DATA, and RESPONSE with HEADERS but without DATA.
@@ -33,28 +26,60 @@ requests_log = logging.getLogger("requests.packages.urllib3")
 requests_log.setLevel(logging.DEBUG)
 requests_log.propagate = True
 
+def __dump_json(to_print):
+    return json.dumps(to_print, sort_keys=True, indent=4, separators=(',', ': '))
 
-#signer = oci.auth.signers.InstancePrincipalsSecurityTokenSigner()
-delegation_token = open('/home/user/.oci/delegation_token', 'r').read()
-signer = oci.auth.signers.InstancePrincipalsDelegationTokenSigner(delegation_token=delegation_token)
+def __print_json(to_print):
+    print(__dump_json(to_print))
 
-resp = requests.get("https://iad.ocir.io/20180419/docker/token", auth=signer)
-#print(resp.text)
-token = resp.json()['token']
+def __check_package(pkg, pippkg = None):
+    pippkg = pkg if pippkg == None else pippkg
+    try:
+        __import__(pkg)
+    except ImportError as e:
+        sys.stdout.write('{0} python package not available\n'.format(pkg))
+        sys.stdout.write("Install by executing:\n")
+        sys.stdout.write("  env PIP_REQUIRE_VIRTUALENV=false pip install --user {0}\n".format(pippkg))
+        sys.stdout.flush()
+        sys.exit(1)
 
-docker_config = None
-with open('/home/user/.docker/config.json', 'r') as configjson:
-   docker_config = json.load(configjson) 
+def __check_packages():
+    __check_package('oci')
+    __check_package('requests')
 
-auths = docker_config.get('auths')
-if auths is None:
-    auths = {}
-    docker_config['auths'] = auths
-iad_ocir_config = auths.get('iad.ocir.io')
-if iad_ocir_config is None:
-    iad_ocir_config = {}
-    auths['iad.ocir.io'] = iad_ocir_config
-iad_ocir_config['registryToken'] = token
 
-with open('/home/user/.docker/config.json', 'w') as configjson:
-    configjson.write(__dump_json(docker_config))
+def main(argv):
+    __check_packages()
+    
+    #signer = oci.auth.signers.InstancePrincipalsSecurityTokenSigner()
+    delegation_token = open('/home/user/.oci/delegation_token', 'r').read()
+    signer = oci.auth.signers.InstancePrincipalsDelegationTokenSigner(delegation_token=delegation_token)
+    
+    resp = requests.get("https://iad.ocir.io/20180419/docker/token", auth=signer)
+    #print(resp.text)
+    token = resp.json()['token']
+    
+    docker_config_filename = '/home/user/.docker/config.json'
+    docker_config = {}
+    
+    if os.path.exists(docker_config_filename):
+        with open(docker_config_filename, 'r') as configjson:
+            docker_config = json.load(configjson) 
+
+    auths = docker_config.get('auths')
+    if auths is None:
+        auths = {}
+        docker_config['auths'] = auths
+
+    iad_ocir_config = auths.get('iad.ocir.io')
+    if iad_ocir_config is None:
+        iad_ocir_config = {}
+        auths['iad.ocir.io'] = iad_ocir_config
+    iad_ocir_config['registryToken'] = token
+
+    os.makedirs(os.path.dirname(docker_config_filename))
+    with open(docker_config_filename, 'w') as configjson:
+        configjson.write(__dump_json(docker_config))
+
+if __name__ == '__main__':
+    main(sys.argv)
