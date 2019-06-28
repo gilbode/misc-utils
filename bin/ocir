@@ -1,0 +1,60 @@
+#!/home/oci/lib/oracle-cli/bin/python
+
+import oci.auth.signers
+import oci.identity
+import requests
+from oci import Signer
+
+import json
+
+def __dump_json(to_print):
+    return json.dumps(to_print, sort_keys=True, indent=4, separators=(',', ': '))
+
+def __print_json(to_print):
+    print(__dump_json(to_print))
+
+import requests
+import logging
+
+# These two lines enable debugging at httplib level (requests->urllib3->http.client)
+# You will see the REQUEST, including HEADERS and DATA, and RESPONSE with HEADERS but without DATA.
+# The only thing missing will be the response.body which is not logged.
+try:
+    import http.client as http_client
+except ImportError:
+    # Python 2
+    import httplib as http_client
+http_client.HTTPConnection.debuglevel = 1
+
+# You must initialize logging, otherwise you'll not see debug output.
+logging.basicConfig()
+logging.getLogger().setLevel(logging.DEBUG)
+requests_log = logging.getLogger("requests.packages.urllib3")
+requests_log.setLevel(logging.DEBUG)
+requests_log.propagate = True
+
+
+#signer = oci.auth.signers.InstancePrincipalsSecurityTokenSigner()
+delegation_token = open('/home/user/.oci/delegation_token', 'r').read()
+signer = oci.auth.signers.InstancePrincipalsDelegationTokenSigner(delegation_token=delegation_token)
+
+resp = requests.get("https://iad.ocir.io/20180419/docker/token", auth=signer)
+#print(resp.text)
+token = resp.json()['token']
+
+docker_config = None
+with open('/home/user/.docker/config.json', 'r') as configjson:
+   docker_config = json.load(configjson) 
+
+auths = docker_config.get('auths')
+if auths is None:
+    auths = {}
+    docker_config['auths'] = auths
+iad_ocir_config = auths.get('iad.ocir.io')
+if iad_ocir_config is None:
+    iad_ocir_config = {}
+    auths['iad.ocir.io'] = iad_ocir_config
+iad_ocir_config['registryToken'] = token
+
+with open('/home/user/.docker/config.json', 'w') as configjson:
+    configjson.write(__dump_json(docker_config))
