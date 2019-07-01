@@ -13,7 +13,7 @@ def __dump_json(to_print):
 def __print_json(to_print):
     print(__dump_json(to_print))
 
-def __setup_requests_logging()
+def __setup_requests_logging():
     import requests
 
     # These two lines enable debugging at httplib level (requests->urllib3->http.client)
@@ -51,6 +51,7 @@ def __check_packages():
 
 def main(argv):
     __check_packages()
+    __setup_requests_logging()
     
     import oci.auth.signers
     import oci.identity
