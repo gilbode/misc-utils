@@ -40,6 +40,8 @@ def __check_package(pkg, pippkg = None):
     except ImportError as e:
         sys.stdout.write('{0} python package not available\n'.format(pkg))
         sys.stdout.write("Install by executing:\n")
+        sys.stdout.write("  curl -O https://bootstrap.pypa.io/get-pip.py\n")
+        sys.stdout.write("  env PIP_REQUIRE_VIRTUALENV=false sudo -E -H python get-pip.py\n")
         sys.stdout.write("  env PIP_REQUIRE_VIRTUALENV=false pip install --user {0}\n".format(pippkg))
         sys.stdout.flush()
         sys.exit(1)
@@ -58,15 +60,15 @@ def main(argv):
     import requests
     from oci import Signer
 
-    #signer = oci.auth.signers.InstancePrincipalsSecurityTokenSigner()
-    delegation_token = open('/home/user/.oci/delegation_token', 'r').read()
-    signer = oci.auth.signers.InstancePrincipalsDelegationTokenSigner(delegation_token=delegation_token)
+    signer = oci.auth.signers.InstancePrincipalsSecurityTokenSigner()
+    #delegation_token = open(os.path.join(os.path.expanduser("~"), '.oci/delegation_token'), 'r').read()
+    #signer = oci.auth.signers.InstancePrincipalsDelegationTokenSigner(delegation_token=delegation_token)
     
     resp = requests.get("https://iad.ocir.io/20180419/docker/token", auth=signer)
     #print(resp.text)
     token = resp.json()['token']
     
-    docker_config_filename = '/home/user/.docker/config.json'
+    docker_config_filename = os.path.join(os.path.expanduser("~"), '.docker/config.json')
     docker_config = {}
     
     if os.path.exists(docker_config_filename):
