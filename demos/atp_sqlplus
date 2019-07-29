@@ -1,8 +1,8 @@
 #!/bin/sh
 
 
-ADMIN_PASSWORD=$(LC_ALL=C tr -cd '[:alnum:]|[:punct:]|"' < /dev/random | tr '"' ';' | tr "'" '#' | fold -w30 | head -n1)
-DATABASE_NAME=demo$(LC_ALL=C tr -cd '[:alnum:]' < /dev/random | fold -w8 | head -n1)
+ADMIN_PASSWORD=$(LC_ALL=C tr -cd '[:alnum:]|[:punct:]|"' < /dev/urandom | tr '"' ';' | tr "'" '#' | fold -w30 | head -n1)
+DATABASE_NAME=demo$(LC_ALL=C tr -cd '[:alnum:]' < /dev/urandom | fold -w8 | head -n1)
 TNS_ADMIN=$(mktemp -d -t wallet-XXXXXXXXXX)
 
 command -v oci > /dev/null 2>&1 || { echo >&2 "The OCI cli is not configured or is not on your path" ; exit 1 ; }
