@@ -1,0 +1,102 @@
+#!/bin/sh
+
+
+ADMIN_PASSWORD=$(LC_ALL=C tr -cd '[:alnum:]|[:punct:]|"' < /dev/random | tr '"' ';' | tr "'" '#' | fold -w30 | head -n1)
+DATABASE_NAME=demo$(LC_ALL=C tr -cd '[:alnum:]' < /dev/random | fold -w8 | head -n1)
+TNS_ADMIN=$(mktemp -d -t wallet-XXXXXXXXXX)
+
+command -v oci > /dev/null 2>&1 || { echo >&2 "The OCI cli is not configured or is not on your path" ; exit 1 ; }
+command -v sqlplus > /dev/null 2>&1 || { echo >&2 "sqlplus command not found" ; exit 1 ; }
+
+
+function cleanup()
+{
+    return 0
+}
+
+function validate_compartment()
+{
+    local _compartment_id="$1"
+    oci iam compartment get --compartment-id "${_compartment_id}" > /dev/null 2>&1
+    return $?
+}
+
+function create_autonomous_database()
+{
+    local _compartment_id="$1"
+    local _atp_response=""
+    _atp_response=$(oci db autonomous-database create \
+        --wait-for-state AVAILABLE \
+        --compartment-id "${_compartment_id}" \
+        --db-name "${DATABASE_NAME}" \
+        --cpu-core-count 2 \
+        --data-storage-size-in-tbs 1 \
+        --admin-password "${ADMIN_PASSWORD}")
+    local _status=$?
+    if [ $status == 0 ] ; then
+        echo "${_atp_response}" | jq -r '.data.id'
+    fi
+    return $status
+}
+
+function generate_atp_wallet()
+{
+    local _autonomous_db_id="$1"
+    local _local_wallet="${TNS_ADMIN}/wallet.zip"
+
+    oci db autonomous-database generate-wallet \
+        --autonomous-database-id "${_autonomous_db_id}" \
+        --password "${ADMIN_PASSWORD}" \
+        --file "${_local_wallet}"
+
+    if [ $? -ne 0 ] ; then
+        return $?
+    fi
+
+    unzip "${local_wallet}" -d "${TNS_ADMIN}"
+    if [ $? -ne 0 ] ; then
+        return $?
+    fi
+
+    if [ "$(uname -s)" == "Darwin" ] ; then
+        sed -i "" "s#\?/network/admin#${TNS_ADMIN}#g" ${TNS_ADMIN}/sqlnet.ora
+    else
+        sed -i "s#\?/network/admin#${TNS_ADMIN}#g" ${TNS_ADMIN}/sqlnet.ora
+    fi
+
+    if [ $? -ne 0 ] ; then
+        return $?
+    fi
+
+    return 0
+}
+
+function call_sqlplus()
+{
+    echo "selct * from all_tables" | sqlplus admin/"${ADMIN_PASSWORD}"@"${DATABASE_NAME}_high"
+    return $?
+}
+
+function delete_autonomous_database()
+{
+    local _autonomous_db_id="$1"
+    oci db autonomous-database delete \
+        --wait-for-state TERMINATED \
+        --autonomous-database-id "${_autonomous_db_id}"
+    return $?
+}
+
+
+if [ $# -ne 1 ] ; then
+    echo "usage: $0 compartment_ocid"
+    exit 1
+fi
+
+validate_compartment "${1}" || { $status=$? ; cleanup ; exit $status ; }
+database_id=$(create_autonomous_database "${1}" || { $status=$? ; cleanup ; exit $status ; }
+generate_atp_wallet "${database_id}" || { $status=$? ; cleanup ; exit $status ; }
+call_sqlplus || { $status=$? ; cleanup ; exit $status ; }
+
+delete_autonomous_database "${database_id}"
+
+exit $?
