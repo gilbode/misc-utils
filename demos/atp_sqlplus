@@ -33,7 +33,7 @@ function create_autonomous_database()
         --data-storage-size-in-tbs 1 \
         --admin-password "${ADMIN_PASSWORD}")
     local _status=$?
-    if [ $status == 0 ] ; then
+    if [ $_status == 0 ] ; then
         echo "${_atp_response}" | jq -r '.data.id'
     fi
     return $status
