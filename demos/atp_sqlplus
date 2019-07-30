@@ -2,7 +2,7 @@
 
 
 ADMIN_PASSWORD=$(LC_ALL=C tr -cd '[:alnum:]' < /dev/urandom | fold -w9 | head -n1)$(LC_ALL=C tr -cd '[:upper:]' < /dev/urandom | fold -w1 | head -n1)$(LC_ALL=C tr -cd '[:lower:]' < /dev/urandom | fold -w1 | head -n1)$(LC_ALL=C tr -cd '[:digit:]' < /dev/urandom | fold -w1 | head -n1)
-DATABASE_NAME=demo$(LC_ALL=C tr -cd '[:alnum:]' < /dev/urandom | fold -w8 | head -n1)
+DATABASE_NAME=demo$(LC_ALL=C tr -cd '[:alnum:]' < /dev/urandom | fold -w8 | head -n1 | tr '[:upper:]' '[:lower:]')
 
 export TNS_ADMIN=$(mktemp -d -t wallet-XXXXXXXXXX)
 
