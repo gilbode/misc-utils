@@ -74,7 +74,7 @@ function generate_atp_wallet()
 
 function call_sqlplus()
 {
-    echo "selct * from all_tables" | sqlplus admin/"${ADMIN_PASSWORD}"@"${DATABASE_NAME}_high"
+    echo "select table_name from all_tables;" | sqlplus admin/"${ADMIN_PASSWORD}"@"${DATABASE_NAME}_high"
     return $?
 }
 
@@ -99,6 +99,6 @@ database_id=$(create_autonomous_database "${1}" || { $status=$? ; cleanup ; exit
 generate_atp_wallet "${database_id}" || { $status=$? ; cleanup ; exit $status ; }
 call_sqlplus || { $status=$? ; cleanup ; exit $status ; }
 
-#delete_autonomous_database "${database_id}"
+delete_autonomous_database "${database_id}"
 
 exit $?
