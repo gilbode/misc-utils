@@ -1,9 +1,10 @@
 #!/bin/sh
 
 
-ADMIN_PASSWORD=$(LC_ALL=C tr -cd '[:alnum:]|[:punct:]|"' < /dev/urandom | tr '"' ';' | tr "'" '#' | fold -w30 | head -n1)
+ADMIN_PASSWORD=$(LC_ALL=C tr -cd '[:alnum:]' < /dev/urandom | fold -w9 | head -n1)$(LC_ALL=C tr -cd '[:upper:]' < /dev/urandom | fold -w1 | head -n1)$(LC_ALL=C tr -cd '[:lower:]' < /dev/urandom | fold -w1 | head -n1)$(LC_ALL=C tr -cd '[:digit:]' < /dev/urandom | fold -w1 | head -n1)
 DATABASE_NAME=demo$(LC_ALL=C tr -cd '[:alnum:]' < /dev/urandom | fold -w8 | head -n1)
-TNS_ADMIN=$(mktemp -d -t wallet-XXXXXXXXXX)
+
+export TNS_ADMIN=$(mktemp -d -t wallet-XXXXXXXXXX)
 
 command -v oci > /dev/null 2>&1 || { echo >&2 "The OCI cli is not configured or is not on your path" ; exit 1 ; }
 command -v sqlplus > /dev/null 2>&1 || { echo >&2 "sqlplus command not found" ; exit 1 ; }
@@ -53,7 +54,7 @@ function generate_atp_wallet()
         return $?
     fi
 
-    unzip "${local_wallet}" -d "${TNS_ADMIN}"
+    unzip "${_local_wallet}" -d "${TNS_ADMIN}"
     if [ $? -ne 0 ] ; then
         return $?
     fi
@@ -81,6 +82,7 @@ function delete_autonomous_database()
 {
     local _autonomous_db_id="$1"
     oci db autonomous-database delete \
+        --force \
         --wait-for-state TERMINATED \
         --autonomous-database-id "${_autonomous_db_id}"
     return $?
@@ -97,6 +99,6 @@ database_id=$(create_autonomous_database "${1}" || { $status=$? ; cleanup ; exit
 generate_atp_wallet "${database_id}" || { $status=$? ; cleanup ; exit $status ; }
 call_sqlplus || { $status=$? ; cleanup ; exit $status ; }
 
-delete_autonomous_database "${database_id}"
+#delete_autonomous_database "${database_id}"
 
 exit $?
