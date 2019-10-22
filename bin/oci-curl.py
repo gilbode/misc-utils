@@ -93,7 +93,7 @@ def main(argv):
     debug_group.add_argument('-d', '--debug', dest='debug', default=False, action='store_true',
             help='Produce debug output')
 
-    parser.add_argument('--config-file', dest="config_file", default=os.path.expanduser("~/.oci/config"),
+    parser.add_argument('--config-file', dest="config_file", action=EnvDefault, envvar='OCI_CLI_CONFIG_FILE', default=os.path.expanduser("~/.oci/config"),
             metavar='TEXT', help='The path to the config file.  [default: ~/.oci/config]')
     parser.add_argument('--profile', dest="profile", action=EnvDefault, envvar='OCI_CLI_PROFILE', default='DEFAULT',
             metavar='TEXT', help='The profile in the config file to load. This profile will also be used to locate any default parameter values which have been specified in the OCI CLI-specific configuration file.  [default: DEFAULT]')
